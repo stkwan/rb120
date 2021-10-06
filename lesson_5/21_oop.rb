@@ -1,11 +1,12 @@
 class Player
-  attr_accessor :hand
+  attr_accessor :hand, :score
   attr_writer :current_total
 
   def initialize(name)
     @name = name
     @hand = []
     @current_total = current_total
+    @score = 0
   end
 
   def busted?
@@ -21,18 +22,21 @@ class Player
       else sum += card[0]
       end
     end
-    sum -= (10 * count_of_aces) if sum > 21
+    # adjust for ace(s)
+    aces = hand.count { |card| card.first == "A" }
+  
+    loop do
+      break if sum < 21 || aces <= 0
+      if sum > 21 && aces > 0
+        sum -= 10
+        aces -= 1
+      end
+    end
     sum
   end
 
   def [](index)
     "#{hand[index][0]} of #{hand[index][1]}"
-  end
-
-  private
-
-  def count_of_aces
-    hand.count { |card| card.first == "A" }
   end
 end
 
@@ -56,11 +60,12 @@ class Deck
         cards << [face, suit]
       end
     end
-    cards.shuffle!
+    @cards = cards.shuffle!
   end
 end
 
 class Game
+  MAX_WINS = 5
   attr_reader :deck, :human, :dealer
 
   def initialize
@@ -77,12 +82,17 @@ class Game
       human_turn
       dealer_turn unless human.busted?
       show_result unless human.busted? || dealer.busted?
+      display_game_over if game_over?
       break unless play_again?
     end
     goodbye_message
   end
 
   private
+
+  def display_scores
+    puts "SCORES: Player: #{human.score} | Dealer: #{dealer.score}"
+  end
 
   def welcome_message
     system "clear"
@@ -98,10 +108,11 @@ class Game
   end
 
   def show_initial_cards
+    display_scores
+    puts ""
     puts "Dealer has [#{dealer[0]}] and an unknown card."
     puts ""
     puts "You have [#{human[0]}] and [#{human[1]}]."
-    puts ""
   end
 
   # rubocop: disable Metrics/MethodLength
@@ -157,8 +168,10 @@ class Game
     puts "Dealer has #{dealer.current_total}"
     if human.current_total > dealer.current_total
       puts "You win!"
+      human.score += 1
     elsif human.current_total < dealer.current_total
       puts "Dealer wins!"
+      dealer.score += 1
     else
       puts "It's a tie!"
     end
@@ -172,6 +185,7 @@ class Game
   def short_circut_winner
     if human.busted?
       puts "You Busted! Dealer wins!"
+      dealer.score += 1
     elsif dealer.busted?
       puts "Dealer shows his hand:"
       puts ""
@@ -179,12 +193,28 @@ class Game
       puts ""
       puts "Dealer has #{dealer.current_total}"
       puts "Dealer Busted! You win!"
+      human.score += 1
     end
   end
 
-  def reset_hands
+  def reset_hand
     human.hand = []
     dealer.hand = []
+  end
+
+  def game_over?
+    human.score == MAX_WINS || dealer.score == MAX_WINS
+  end
+
+  def display_game_over
+    puts "GAME OVER!"
+    display_scores
+    reset_scores
+  end
+
+  def reset_scores
+    human.score = 0
+    dealer.score = 0
   end
 
   def play_again?
@@ -195,7 +225,7 @@ class Game
       break if ["y", "n"].include?(answer)
       puts "Invalid response."
     end
-    reset_hands if answer == "y"
+    reset_hand if answer == "y"
     system "clear" if answer == "y"
     answer == "y"
   end
