@@ -1,3 +1,4 @@
+require "pry"
 class Player
   attr_accessor :hand, :score
   attr_writer :current_total
@@ -26,11 +27,11 @@ class Player
     aces = hand.count { |card| card.first == "A" }
   
     loop do
-      break if sum < 21 || aces <= 0
       if sum > 21 && aces > 0
         sum -= 10
         aces -= 1
       end
+      break if sum <= 21 || aces <= 0
     end
     sum
   end
@@ -41,26 +42,28 @@ class Player
 end
 
 class Deck
+  attr_accessor :cards
+  
   def initialize
-    @cards = cards
+    @cards = []
   end
 
   def hit
     cards.pop
   end
+  
+  def shuffle_cards
+    cards.shuffle!
+  end
 
-  private
-
-  def cards
-    cards = []
+  def create_deck
     faces = [2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K", "A"]
     suits = ["hearts", "diamonds", "clubs", "spades"]
     faces.each do |face|
       suits.each do |suit|
-        cards << [face, suit]
+        @cards << [face, suit]
       end
     end
-    @cards = cards.shuffle!
   end
 end
 
@@ -103,6 +106,8 @@ class Game
   end
 
   def deal_cards
+    deck.create_deck
+    deck.shuffle_cards
     2.times { human.hand << deck.hit }
     2.times { dealer.hand << deck.hit }
   end
